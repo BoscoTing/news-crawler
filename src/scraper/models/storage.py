@@ -6,6 +6,7 @@ class ArticleData:
     url: str
     title: str
     content: str
-    category: str
-    published_date: str
-    scraped_timestamp: str
+    categories: list[str]
+    keywords: list[str]
+    published_at: str
+    scraped_at: str

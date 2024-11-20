@@ -1,6 +1,6 @@
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
 from urllib.parse import urljoin
 
@@ -10,7 +10,6 @@ from scraper.core.scraper import Scraper
 from scraper.interfaces import IProcessor
 from scraper.models import (
     ArticleInfo,
-    ProcessingResult,
     SitemapMetadata,
     ScrapedItem,
 )
@@ -21,7 +20,7 @@ class SitemapProcessor(IProcessor[SitemapMetadata]):
     
     def __init__(
         self, 
-        scraper: Scraper, 
+        scraper: Scraper,
         base_url: str = "https://money.udn.com",
         time_range: Optional[Tuple[datetime, datetime]] = None,
     ):
@@ -34,17 +33,24 @@ class SitemapProcessor(IProcessor[SitemapMetadata]):
         self._article_count = 0
 
     def _parse_staticmap_date(self, url: str) -> Optional[datetime]:
-        """Parse the date from a staticmap URL
+        """Parse the date from a staticmap URL including week information
         Example URL format: https://money.udn.com/sitemap/staticmap/1001T202411W3
+        Returns the date of the first day of the specified week
         """
         try:
-            # Extract the date part (202411)
             parts = url.split('/')[-1]
-            year_week = parts.split('T')[1][:6]
-            year = year_week[:4]
-            month = year_week[4:6]
-            # Construct a datetime object for the first day of the month
-            return datetime.strptime(f"{year}{month}01", "%Y%m%d")
+            date_part = parts.split('T')[1]
+            
+            year = int(date_part[:4])
+            month = int(date_part[4:6])
+            week = int(date_part.split('W')[1])
+            
+            # Create first day of month
+            first_day = datetime(year, month, 1)
+
+            week_start = first_day + timedelta(days=(week-1)*7)
+            
+            return week_start
         except (IndexError, ValueError):
             return None
 
@@ -58,7 +64,8 @@ class SitemapProcessor(IProcessor[SitemapMetadata]):
             return True
             
         start_date, end_date = self.time_range
-        return start_date <= date <= end_date
+        # Include the entire week (7 days) in the comparison
+        return start_date <= date + timedelta(days=6) and date <= end_date
     
     def _extract_publish_date(self, url_element: Tag) -> Optional[datetime]:
         """
@@ -127,51 +134,8 @@ class SitemapProcessor(IProcessor[SitemapMetadata]):
                     self._article_count += 1
                 
         return article_urls
-    
-    async def process_url(self, sitemap_url: str) -> ProcessingResult[SitemapMetadata]:
-        """Process single sitemap URL"""
-        # Reset counters
-        self._staticmap_count = 0
-        self._article_count = 0
-        self._categories.clear()
-        
-        # Step 1: Get sitemap content
-        sitemap_content = await self.scraper.downloader.download_async(sitemap_url)
-        if not sitemap_content:
-            return ProcessingResult(items=[], metadata=None)
-            
-        # Step 2: Get static map URLs
-        staticmap_urls = self.extract_next_level_urls(sitemap_content)
-        
-        # Step 3: Process each static map
-        article_urls = []
-        for staticmap_url in staticmap_urls:
-            content = await self.scraper.downloader.download_async(staticmap_url)
-            if content:
-                urls = self.extract_final_level_urls(content)
-                article_urls.extend(urls)
-        
-        # Step 4: Scrape articles
-        scraped_items = await self.scraper.scrape_urls_async(article_urls)
-        
-        # Create metadata
-        metadata = SitemapMetadata(
-            total_staticmaps=self._staticmap_count,
-            total_articles=self._article_count,
-            categories=list(self._categories)
-        )
-        
-        return ProcessingResult(items=scraped_items, metadata=metadata)
-    
-    async def process_urls(self, urls: List[str]) -> List[ProcessingResult[SitemapMetadata]]:
-        """Process multiple sitemap URLs"""
-        results = []
-        for url in urls:
-            result = await self.process_url(url)
-            results.append(result)
-        return results
 
-    async def process_pipeline(self, sitemap_url: str) -> List[ScrapedItem]:
+    async def process_url(self, sitemap_url: str) -> List[ScrapedItem]:
         """Process the complete scraping pipeline"""
         # Step 1: Scrape the sitemap
         sitemap_content = await self.scraper.downloader.download_async(sitemap_url)
@@ -192,16 +156,12 @@ class SitemapProcessor(IProcessor[SitemapMetadata]):
         # Step 4: Scrape all article content
         article_urls = [article.url for article in all_articles]
         scraped_items = await self.scraper.scrape_urls_async(article_urls)
-        
-        # Enhance scraped items with category and published date
-        for item in scraped_items:
-            article_info = next((a for a in all_articles if a.url == item.url), None)
-            if article_info:
-                item.data['category'] = article_info.category
-                item.data['published_date'] = article_info.published_at
-
-        # Step 6: Store the scraped items
-        if scraped_items:
-            await self.storage.save_batch_parquet(scraped_items)
-        
         return scraped_items
+
+    async def process_urls(self, urls: List[str]) -> List[List[ScrapedItem]]:
+        """Process multiple sitemap URLs"""
+        results = []
+        for url in urls:
+            result = await self.process_url(url)
+            results.append(result)
+        return results

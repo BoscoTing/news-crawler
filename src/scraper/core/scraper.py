@@ -1,6 +1,8 @@
+from datetime import datetime
 from typing import List, Optional
-import asyncio
 from contextlib import asynccontextmanager
+
+import asyncio
 
 from scraper.interfaces import (
     IDownloader,
@@ -36,7 +38,7 @@ class Scraper:
 
     async def _notify_error_async(self, error: Exception, url: str):
         for observer in self.observers:
-            await observer.on_error_async(error, url)
+            await observer.on_scraped_error_async(error, url)
 
     @asynccontextmanager
     async def _limited_concurrency(self):
@@ -56,6 +58,7 @@ class Scraper:
                     item = self.parser.parse(content)
                     if item:
                         item.url = url
+                        item.scraped_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         await self._notify_item_scraped_async(item)
                         return item
             except Exception as e:
@@ -64,6 +67,7 @@ class Scraper:
 
     async def scrape_urls_async(self, urls: List[str]) -> List[ScrapedItem]:
         """Scrape multiple urls asynchronously"""
+        urls = urls[0:2]
         tasks = [self.scrape_url_async(url) for url in urls]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
@@ -71,7 +75,7 @@ class Scraper:
             item for item in results 
             if isinstance(item, ScrapedItem)
         ]
-        
+        print(scraped_items)
         if self.storage and scraped_items:
             await self.storage.save_async(scraped_items)
             

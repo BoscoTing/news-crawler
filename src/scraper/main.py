@@ -13,6 +13,7 @@ async def main():
         'category': '.breadcrumb__item',
         'content': '#article_body',
         'keywords': '.article-keyword__item',
+        'published_at': '.article-body__time'
     }
     s3_config = {
         "bucket_name": settings.S3_BUCKET_NAME,
@@ -24,7 +25,6 @@ async def main():
     factory = ScraperFactory()
     downloader = factory.create_downloader()
     parser = factory.create_parser(selectors)
-    # Create Spark-compatible S3 storage
     storage = factory.create_storage(
         storage_type="s3-parquet",
         s3_config=s3_config,
@@ -42,14 +42,15 @@ async def main():
     scraper.add_observer(logging_observer)
     scraper.add_observer(stats_observer)
 
+    # Inject scraper to sitemap processor
     sitemap_processor = SitemapProcessor(
         scraper, 
         time_range=(settings.START_DATE, settings.END_DATE)
     )
     
-    # Scrape
+
     sitemap_url = settings.UDN_SITEMAP_URL
-    results = await sitemap_processor.process_pipeline(sitemap_url)
+    results = await sitemap_processor.process_url(sitemap_url)
     
     # Check statistics
     print(f"Succeeded: {stats_observer.success_count}")
