@@ -10,8 +10,14 @@ class LoggingObserver(IScraperObserver):
     async def on_item_scraped_async(self, item: ScrapedItem):
         self.logger.info(f"Successful scrape: {item.url}")
 
-    async def on_error_async(self, error: Exception, url: str):
+    async def on_scraped_error_async(self, error: Exception, url: str):
         self.logger.error(f"Error scraping {url}: {str(error)}")
+    
+    async def on_item_saved_async(self, item: ScrapedItem):
+        self.logger.info(f"Saved item: {item.url}")
+
+    async def on_item_saved_error_async(self, item: ScrapedItem):
+        self.logger.error(f"Error saving item: {item.url}")
 
 
 class StatisticsObserver(IScraperObserver):
@@ -23,6 +29,6 @@ class StatisticsObserver(IScraperObserver):
     async def on_item_scraped_async(self, item: ScrapedItem):
         self.success_count += 1
 
-    async def on_error_async(self, error: Exception, url: str):
+    async def on_scraped_error_async(self, error: Exception, url: str):
         self.error_count += 1
         self.errors.append((url, str(error)))

@@ -9,5 +9,5 @@ class IScraperObserver(ABC):
         pass
     
     @abstractmethod
-    def on_error_async(self, error: Exception, url: str):
+    def on_scraped_error_async(self, error: Exception, url: str):
         pass
