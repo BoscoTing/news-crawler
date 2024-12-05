@@ -17,7 +17,7 @@ class Config(BaseSettings):
     S3_BASE_PATH: str
     S3_REGION_NAME: str
 
-    S3_ACCESS_KEY_ID: str
-    S3_SECRET_ACCESS_KEY: str
+    AWS_ACCESS_KEY_ID: str
+    AWS_SECRET_ACCESS_KEY: str
 
 settings = Config()
