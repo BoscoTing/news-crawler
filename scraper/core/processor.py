@@ -127,49 +127,6 @@ class SitemapProcessor(IProcessor[SitemapMetadata]):
                     self._article_count += 1
                 
         return article_urls
-    
-    async def process_url(self, sitemap_url: str) -> ProcessingResult[SitemapMetadata]:
-        """Process single sitemap URL"""
-        # Reset counters
-        self._staticmap_count = 0
-        self._article_count = 0
-        self._categories.clear()
-        
-        # Step 1: Get sitemap content
-        sitemap_content = await self.scraper.downloader.download_async(sitemap_url)
-        if not sitemap_content:
-            return ProcessingResult(items=[], metadata=None)
-            
-        # Step 2: Get static map URLs
-        staticmap_urls = self.extract_next_level_urls(sitemap_content)
-        
-        # Step 3: Process each static map
-        article_urls = []
-        for staticmap_url in staticmap_urls:
-            content = await self.scraper.downloader.download_async(staticmap_url)
-            if content:
-                urls = self.extract_final_level_urls(content)
-                article_urls.extend(urls)
-        
-        # Step 4: Scrape articles
-        scraped_items = await self.scraper.scrape_urls_async(article_urls)
-        
-        # Create metadata
-        metadata = SitemapMetadata(
-            total_staticmaps=self._staticmap_count,
-            total_articles=self._article_count,
-            categories=list(self._categories)
-        )
-        
-        return ProcessingResult(items=scraped_items, metadata=metadata)
-    
-    async def process_urls(self, urls: List[str]) -> List[ProcessingResult[SitemapMetadata]]:
-        """Process multiple sitemap URLs"""
-        results = []
-        for url in urls:
-            result = await self.process_url(url)
-            results.append(result)
-        return results
 
     async def process_pipeline(self, sitemap_url: str) -> List[ScrapedItem]:
         """Process the complete scraping pipeline"""
@@ -192,16 +149,8 @@ class SitemapProcessor(IProcessor[SitemapMetadata]):
         # Step 4: Scrape all article content
         article_urls = [article.url for article in all_articles]
         scraped_items = await self.scraper.scrape_urls_async(article_urls)
-        
-        # Enhance scraped items with category and published date
-        for item in scraped_items:
-            article_info = next((a for a in all_articles if a.url == item.url), None)
-            if article_info:
-                item.data['category'] = article_info.category
-                item.data['published_date'] = article_info.published_at
 
-        # Step 6: Store the scraped items
         if scraped_items:
-            await self.storage.save_batch_parquet(scraped_items)
+            await self.scraper.storage.save_async(scraped_items)
         
         return scraped_items

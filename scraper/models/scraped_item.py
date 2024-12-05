@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Any
 
+from pydantic import BaseModel
+
 
 @dataclass
 class ScrapedItem:

@@ -13,6 +13,7 @@ async def main():
         'category': '.breadcrumb__item',
         'content': '#article_body',
         'keywords': '.article-keyword__item',
+        'published_at': '.article-body__time',
     }
     s3_config = {
         "bucket_name": settings.S3_BUCKET_NAME,

@@ -64,7 +64,7 @@ class Scraper:
 
     async def scrape_urls_async(self, urls: List[str]) -> List[ScrapedItem]:
         """Scrape multiple urls asynchronously"""
-        tasks = [self.scrape_url_async(url) for url in urls]
+        tasks = [self.scrape_url_async(url) for url in urls[:2]]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
         scraped_items = [
