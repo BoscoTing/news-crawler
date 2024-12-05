@@ -1,5 +1,5 @@
 from .scraped_item import ScrapedItem
-from .storage import ArticleData
+from .article_data import ArticleData
 from .processor import (
     ArticleInfo,
     ProcessingResult, 
