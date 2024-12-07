@@ -10,7 +10,7 @@ from scraper.core.scraper import Scraper
 async def main():
     selectors = {
         'title': 'h1',
-        'category': '.breadcrumb__item',
+        'categories': '.breadcrumb__item',
         'content': '#article_body',
         'keywords': '.article-keyword__item',
         'published_at': '.article-body__time',
