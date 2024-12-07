@@ -1,21 +1,16 @@
 import pandas as pd
-import torch
 from pyspark.sql import DataFrame, SparkSession
-from pyspark.sql.functions import pandas_udf, col, current_timestamp
+from pyspark.sql.functions import pandas_udf, current_timestamp
 from pyspark.sql.types import (
-    ArrayType,
     FloatType,
     StringType,
     StructType,
     StructField,
-    TimestampType,
 )
-from pyspark.ml.feature import Tokenizer, StopWordsRemover
 from transformers import pipeline
 from typing import Iterator
 
 from spark.interfaces import ISparkSentimentProcessor
-from spark.config.spark_config import settings
 
 
 class ChineseFinBERTProcessor(ISparkSentimentProcessor):
@@ -55,7 +50,6 @@ class ChineseFinBERTProcessor(ISparkSentimentProcessor):
         """Creates sentiment analysis UDF using pipeline"""
         analysis_pipeline = self._create_pipeline()
 
-        # Mapping for sentiment labels
         LABEL_MAP = {
             'LABEL_0': 'positive',
             'LABEL_1': 'neutral',
