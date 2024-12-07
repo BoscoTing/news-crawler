@@ -17,7 +17,7 @@ class HTMLParser(IParser):
             soup = BeautifulSoup(content, 'lxml')
             data = {}
             for key, selector in self.selectors.items():
-                if key in ['keywords', 'category']:
+                if key in ['keywords', 'categories']:
                     elements = soup.select(selector)
                     data[key] = [element.text.strip() for element in elements]
                 else:
