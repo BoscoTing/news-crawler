@@ -36,9 +36,14 @@ class S3Storage(IStorage):
         """Get S3 partition path"""
         if not partition_key:
             partition_key = datetime.now().strftime(
-                'year=%Y/month=%m/initial_day=%d'
+                'year=%Y/month=%m/day=%d'
             )
         return f"{self.base_path}/{partition_key}"
+
+    def _get_partition_key(self, published_at: str) -> str:
+        publish_datetime = datetime.strptime(published_at, "%Y-%m-%d %H:%M:%S")
+        year, month, day = publish_datetime.year, publish_datetime.month, publish_datetime.day
+        return f"year={year}/month={month:02d}/weekstart={day:02d}"
 
     def _generate_temp_filename(self) -> Path:
         """Generate a temporary file path"""
@@ -54,13 +59,16 @@ class S3Storage(IStorage):
             # Transform scraped items to structured format
             articles = []
             for item in items:
+                published_at = item.data.get('published_at', '')
                 article = ArticleData(
                     url=item.url,
                     title=item.data.get('title', ''),
                     content=item.data.get('content', ''),
-                    categories=item.data.get('category', ''),
+                    categories=item.data.get('categories', ''),
                     keywords=item.data.get('keywords', ''),
-                    published_at=item.data.get('published_at', ''),
+                    published_at=datetime \
+                        .strptime(published_at, "%Y/%m/%d %H:%M:%S")
+                        .strftime("%Y-%m-%d %H:%M:%S"),
                     scraped_at=item.scraped_at,
                 )
                 articles.append(article)
@@ -74,7 +82,7 @@ class S3Storage(IStorage):
             
             # Upload to S3 with partitioning
             partition_path = self._get_partition_path(
-                partition_key=articles[0].published_at.split(" ")[0]
+                partition_key=self._get_partition_key(articles[-1].published_at)
             )
             s3_key = f"{partition_path}/articles_{datetime.now().strftime('%Y%m%d_%H%M%S')}.parquet"
             
