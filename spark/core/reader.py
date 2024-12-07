@@ -88,7 +88,7 @@ class SparkParquetReader(ISparkReader):
                 partition_values = {
                     "year": current_date.strftime("%Y"),
                     "month": current_date.strftime("%m"),
-                    "initial_day": current_date.strftime("%d"),
+                    "weekstart": current_date.strftime("%d"),
                 }
                 partition_filters.append(
                     self._get_s3_path(base_path, partition_values)
@@ -105,7 +105,6 @@ class SparkParquetReader(ISparkReader):
         
         if columns:
             df = df.select(columns)
-        
         return df
 
     def close(self):
