@@ -1,3 +1,7 @@
+/data/
+/tmp/
+
+# MacOS generated files
 .DS_Store
 
 # Byte-compiled / optimized / DLL files
