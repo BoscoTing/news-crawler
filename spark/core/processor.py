@@ -1,9 +1,9 @@
 import pandas as pd
 from pyspark.sql import DataFrame, SparkSession
-from pyspark.sql.functions import pandas_udf, current_timestamp
+from pyspark.sql.functions import pandas_udf, current_timestamp, col
 from pyspark.sql.types import (
     FloatType,
-    StringType,
+    IntegerType,
     StructType,
     StructField,
 )
@@ -36,49 +36,45 @@ class ChineseFinBERTProcessor(ISparkSentimentProcessor):
             model=self.model_name,
             max_length=self.max_length,
             batch_size=self.batch_size,
+            truncation=True,
         )
 
     def preprocess_dataframe(self, df: DataFrame) -> DataFrame:
-        cleaned_df = df.selectExpr(
-            "*",
-            "concat(title, ' ', content) as text",
-        )
-
-        return cleaned_df
+        return df \
+            .dropDuplicates(["title", "url"]) \
+            .selectExpr(
+                "*",
+                "concat(title, ' ', content) as text",
+            )
     
     def analyze_sentiment(self, df: DataFrame) -> DataFrame:
         """Creates sentiment analysis UDF using pipeline"""
         analysis_pipeline = self._create_pipeline()
 
-        LABEL_MAP = {
-            'LABEL_0': 'positive',
-            'LABEL_1': 'neutral',
-            'LABEL_2': 'negative'
-        }
-
         @pandas_udf(StructType([
             StructField("score", FloatType(), True),
-            StructField("sentiment", StringType(), True)
+            StructField("label", IntegerType(), True)
         ]))
         def _analyze_sentiment(batch_iter: Iterator[pd.Series]) -> Iterator[pd.DataFrame]:
             for batch in batch_iter:
                 if len(batch) == 0:
-                    yield pd.DataFrame(columns=["score", "sentiment"])
+                    yield pd.DataFrame(columns=["score", "label"])
                     continue
                 
                 results = analysis_pipeline(batch.to_list())
                 batch_results = pd.DataFrame({
                     "score": [result['score'] for result in results],
-                    "sentiment": [LABEL_MAP[result['label']] for result in results]
+                    "label": [int(result['label'].split("_")[-1]) for result in results],
                 })
                 
                 yield batch_results
 
-        return df.selectExpr(
+        return df.select(
             "*",
-            "sentiment_result.score as sentiment_score",
-            "sentiment_result.sentiment as sentiment_label"
-        ).withColumn("sentiment_result", _analyze_sentiment("text"))
+            _analyze_sentiment("text").alias("sentiment_result")
+        ).select("*",
+                 col("sentiment_result.score").alias("sentiment_score"),
+                 col("sentiment_result.label").alias("sentiment_label"))
 
     def get_aggregated_sentiment(self, df: DataFrame) -> DataFrame:
         return df.select(
