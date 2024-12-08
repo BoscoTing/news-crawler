@@ -17,6 +17,8 @@ db_timezone = ZoneInfo('UTC')
 
 
 class ArticleSentiment(SQLModel, table=True):
+    __tablename__ = "article_sentiment"
+
     id: int | None = Field(
         sa_column=Column(BigInteger,
                          autoincrement=True,
@@ -33,7 +35,7 @@ class ArticleSentiment(SQLModel, table=True):
                          index=True),
     )
     sentiment_score: float = Field(
-        sa_column=Column(Numeric(precision=3))
+        sa_column=Column(Numeric(precision=5, scale=4))
     )
     sentiment_label: str = Field(
         min_length=1,

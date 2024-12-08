@@ -24,10 +24,12 @@ def create_spark_session(
     # Define AWS dependencies
     hadoop_aws_version = "3.3.4"
     aws_sdk_version = "1.12.261"
+    postgres_version = "42.6.0"
     
     packages = [
         f"org.apache.hadoop:hadoop-aws:{hadoop_aws_version}",
         f"com.amazonaws:aws-java-sdk-bundle:{aws_sdk_version}",
+        f"org.postgresql:postgresql:{postgres_version}",
     ]
     
     builder = SparkSession.builder \

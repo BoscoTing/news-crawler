@@ -60,7 +60,6 @@ class SparkParquetReader(ISparkReader):
                 f"{key}={value}" for key, value in partition_values.items()
             )
             s3_path = f"{s3_path}/{partition_path}"
-        print(s3_path)
         return s3_path
     
     def read_parquet(
